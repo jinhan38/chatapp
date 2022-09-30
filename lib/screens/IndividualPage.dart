@@ -21,9 +21,11 @@ class _IndividualPageState extends State<IndividualPage> {
   late TextEditingController _controller;
   bool show = false;
   FocusNode focusNode = FocusNode();
+  late IO.Socket socket;
 
   @override
   void initState() {
+    connect();
     _controller = TextEditingController();
     focusNode.addListener(() {
       if (focusNode.hasFocus) {
@@ -33,6 +35,16 @@ class _IndividualPageState extends State<IndividualPage> {
       }
     });
     super.initState();
+  }
+
+  void connect(){
+    socket = IO.io("http://192.168.219.117:5000", <String, dynamic>{
+      "transports" : ["websocket"],
+      "autoConnect" : false,
+    });
+    socket.connect();
+    socket.emit("/test", "Hello world");
+    socket.onConnect((data) => print('socket connect success'));
   }
 
   @override
