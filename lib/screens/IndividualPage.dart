@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:app/customUI/OwnMessageCard.dart';
+import 'package:app/customUI/ReplyCard.dart';
 import 'package:app/model/ChatModel.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class IndividualPage extends StatefulWidget {
   IndividualPage({required this.chatModel, Key? key}) : super(key: key);
@@ -128,7 +131,31 @@ class _IndividualPageState extends State<IndividualPage> {
         child: WillPopScope(
           child: Stack(
             children: [
-              ListView(),
+              Positioned(
+                left: 0,
+                top: 0,
+                right: 0,
+                child: Container(
+                  height: MediaQuery.of(context).size.height -140,
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      OwnMessageCard(),
+                      ReplyCard(),
+                      OwnMessageCard(),
+                      ReplyCard(),
+                      OwnMessageCard(),
+                      ReplyCard(),
+                      OwnMessageCard(),
+                      ReplyCard(),
+                      OwnMessageCard(),
+                      ReplyCard(),
+                      OwnMessageCard(),
+                      ReplyCard(),
+                    ],
+                  ),
+                ),
+              ),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Column(
@@ -167,7 +194,16 @@ class _IndividualPageState extends State<IndividualPage> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
-                                          onPressed: () {},
+                                          onPressed: () {
+                                            showModalBottomSheet(
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              context: context,
+                                              builder: (context) {
+                                                return bottomSheet();
+                                              },
+                                            );
+                                          },
                                           icon: Icon(Icons.attach_file)),
                                       IconButton(
                                           onPressed: () {},
@@ -245,7 +281,7 @@ class _IndividualPageState extends State<IndividualPage> {
           indicatorColor: Colors.blue,
           iconColor: Colors.grey,
           iconColorSelected: Colors.blue,
-          progressIndicatorColor: Colors.blue,
+          // progressIndicatorColor: Colors.blue,
           backspaceColor: Colors.blue,
           skinToneDialogBgColor: Colors.white,
           skinToneIndicatorColor: Colors.grey,
@@ -261,6 +297,70 @@ class _IndividualPageState extends State<IndividualPage> {
           categoryIcons: const CategoryIcons(),
           buttonMode: ButtonMode.MATERIAL,
         ),
+      ),
+    );
+  }
+
+  Widget bottomSheet() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      height: 278,
+      width: screenWidth,
+      child: Card(
+        margin: EdgeInsets.all(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  iconCreation(
+                      Icons.insert_drive_file, Colors.indigo, "Document"),
+                  SizedBox(width: 40),
+                  iconCreation(Icons.camera_alt, Colors.pink, "Camera"),
+                  SizedBox(width: 40),
+                  iconCreation(Icons.insert_photo, Colors.purple, "Gallery"),
+                ],
+              ),
+              SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  iconCreation(Icons.headset, Colors.orange, "Audio"),
+                  SizedBox(width: 40),
+                  iconCreation(Icons.location_pin, Colors.pink, "Location"),
+                  SizedBox(width: 40),
+                  iconCreation(Icons.person, Colors.blue, "Contact"),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget iconCreation(IconData icon, Color color, String text) {
+    return InkWell(
+      onTap: () {},
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: color,
+            child: Icon(
+              icon,
+              size: 29,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            text,
+            style: TextStyle(fontSize: 12),
+          ),
+        ],
       ),
     );
   }
