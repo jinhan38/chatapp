@@ -6,6 +6,7 @@ class ChatModel {
   String currentMessage;
   String status;
   bool selected;
+  int id;
 
   ChatModel(
     this.name,
@@ -15,6 +16,7 @@ class ChatModel {
     this.currentMessage,
     this.status, {
     this.selected = false,
+    this.id = 0,
   });
 
   @override
