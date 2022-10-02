@@ -1,3 +1,4 @@
+import 'package:app/newScreen/LandingScreen.dart';
 import 'package:app/screens/CameraScreen.dart';
 import 'package:app/screens/HomeScreen.dart';
 import 'package:app/screens/LoginScreen.dart';
@@ -14,7 +15,6 @@ Future<void> main() async{
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

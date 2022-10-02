@@ -1,14 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:app/customUI/OwnFileCard.dart';
 import 'package:app/customUI/OwnMessageCard.dart';
 import 'package:app/customUI/ReplyCard.dart';
+import 'package:app/customUI/ReplyFileCard.dart';
 import 'package:app/model/ChatModel.dart';
 import 'package:app/model/MessageModel.dart';
+import 'package:app/screens/CameraScreen.dart';
+import 'package:app/screens/CameraViewPage.dart';
+import 'package:camera/camera.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:http/http.dart' as http;
 
 class IndividualPage extends StatefulWidget {
   IndividualPage({
@@ -30,8 +37,10 @@ class _IndividualPageState extends State<IndividualPage> {
   FocusNode focusNode = FocusNode();
   late IO.Socket socket;
   bool sendButton = false;
-
   List<MessageModel> messages = [];
+  ImagePicker _picker = ImagePicker();
+  XFile? file;
+  int popTime = 0;
 
   @override
   void initState() {
@@ -59,7 +68,7 @@ class _IndividualPageState extends State<IndividualPage> {
       print('socket connect success');
       socket.on("message", (msg) {
         print('msg : $msg');
-        setMessage("destination", msg["message"]);
+        setMessage("destination", msg["message"], msg["path"]);
         if (!_scrollController.hasClients) return;
         _scrollController.animateTo(_scrollController.position.maxScrollExtent,
             duration: Duration(milliseconds: 300), curve: Curves.easeOut);
@@ -68,25 +77,58 @@ class _IndividualPageState extends State<IndividualPage> {
     print('소켓 : ${socket.connected}');
   }
 
-  void sendMessage(String message, int sourceId, int targetId) {
-    setMessage("source", message);
+  void sendMessage(String message, int sourceId, int targetId, String path) {
+    setMessage("source", message, path);
     Map<String, dynamic> result = {};
     result.putIfAbsent("message", () => message);
     result.putIfAbsent("sourceId", () => sourceId);
     result.putIfAbsent("targetId", () => targetId);
-    socket.emit("message", result);
+    result.putIfAbsent("path", () => path);
+    socket.emit(
+      "message",
+      result,
+    );
   }
 
-  void setMessage(String type, String message) {
+  void setMessage(String type, String message, String path) {
     var m = MessageModel(
         type: type,
         message: message,
-        time: DateTime.now().toString().substring(10, 16));
+        time: DateTime.now().toString().substring(10, 16),
+        path: path);
     if (mounted) {
       setState(() {
         messages.add(m);
       });
     }
+  }
+
+  void onImageSend(String? path, String message) async {
+    for (int i = 0; i < popTime; i++) {
+      Navigator.pop(context);
+    }
+    popTime = 0;
+
+    if (path == null) return;
+    print('image path : $path');
+    print('image message : $message');
+    String url = "http://192.168.219.117:5000/routes/addimage";
+    var request = http.MultipartRequest("POST", Uri.parse(url));
+    request.files.add(await http.MultipartFile.fromPath("img", path));
+    request.headers.addAll({
+      "Content-type": "multipart/form-data",
+    });
+    http.StreamedResponse response = await request.send();
+    var httpResponse = await http.Response.fromStream(response);
+    var data = json.decode(httpResponse.body);
+    print('response body decode : ${data[path]}');
+    setMessage("source", message, path);
+    socket.emit("message", {
+      "message": message,
+      "sourceId": widget.sourceChat.id,
+      "targetId": widget.chatModel.id,
+      "path": data[path],
+    });
   }
 
   @override
@@ -188,29 +230,41 @@ class _IndividualPageState extends State<IndividualPage> {
           child: Column(
             children: [
               Expanded(
-                child: Container(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: messages.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == messages.length) {
-                        return Container(
-                          height: 70,
-                        );
-                      }
-                      if (messages[index].type == "source") {
-                        return OwnMessageCard(
-                          message: messages[index].message,
-                          time: messages[index].time,
-                        );
-                      } else {
-                        return ReplyCard(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  itemCount: messages.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == messages.length) {
+                      return Container(
+                        height: 70,
+                      );
+                    }
+                    if (messages[index].type == "source") {
+                      if (messages[index].path != null) {
+                        return OwnFileCard(
+                          path: messages[index].path!,
                           message: messages[index].message,
                           time: messages[index].time,
                         );
                       }
-                    },
-                  ),
+                      return OwnMessageCard(
+                        message: messages[index].message,
+                        time: messages[index].time,
+                      );
+                    } else {
+                      if (messages[index].path != null) {
+                        return ReplyFileCard(
+                          path: messages[index].path!,
+                          message: messages[index].message,
+                          time: messages[index].time,
+                        );
+                      }
+                      return ReplyCard(
+                        message: messages[index].message,
+                        time: messages[index].time,
+                      );
+                    }
+                  },
                 ),
               ),
               Container(
@@ -263,7 +317,17 @@ class _IndividualPageState extends State<IndividualPage> {
                                       },
                                       icon: Icon(Icons.attach_file)),
                                   IconButton(
-                                      onPressed: () {},
+                                      onPressed: () {
+                                        popTime = 2;
+                                        Navigator.push(context,
+                                            MaterialPageRoute(
+                                          builder: (context) {
+                                            return CameraScreen(
+                                              onImageSend: onImageSend,
+                                            );
+                                          },
+                                        ));
+                                      },
                                       icon: Icon(Icons.camera_alt)),
                                 ],
                               ),
@@ -283,8 +347,11 @@ class _IndividualPageState extends State<IndividualPage> {
                         child: IconButton(
                             onPressed: () {
                               sendButton = false;
-                              sendMessage(_controller.text,
-                                  widget.sourceChat.id, widget.chatModel.id);
+                              sendMessage(
+                                  _controller.text,
+                                  widget.sourceChat.id,
+                                  widget.chatModel.id,
+                                  "");
                               _controller.clear();
                               if (!_scrollController.hasClients) return;
                               _scrollController.animateTo(
@@ -476,23 +543,47 @@ class _IndividualPageState extends State<IndividualPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  iconCreation(
-                      Icons.insert_drive_file, Colors.indigo, "Document"),
+                  iconCreation(Icons.insert_drive_file, Colors.indigo,
+                      "Document", () {}),
                   SizedBox(width: 40),
-                  iconCreation(Icons.camera_alt, Colors.pink, "Camera"),
+                  iconCreation(Icons.camera_alt, Colors.pink, "Camera", () {
+                    popTime = 3;
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) {
+                        return CameraScreen(
+                          onImageSend: onImageSend,
+                        );
+                      },
+                    ));
+                  }),
                   SizedBox(width: 40),
-                  iconCreation(Icons.insert_photo, Colors.purple, "Gallery"),
+                  iconCreation(Icons.insert_photo, Colors.purple, "Gallery",
+                      () async {
+                    popTime = 2;
+                    file = await _picker.pickImage(source: ImageSource.gallery);
+                    if (file == null) return;
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) {
+                        popTime = 2;
+                        return CameraViewPage(
+                          path: file!.path,
+                          onImageSend: onImageSend,
+                        );
+                      },
+                    ));
+                  }),
                 ],
               ),
               SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  iconCreation(Icons.headset, Colors.orange, "Audio"),
+                  iconCreation(Icons.headset, Colors.orange, "Audio", () {}),
                   SizedBox(width: 40),
-                  iconCreation(Icons.location_pin, Colors.pink, "Location"),
+                  iconCreation(
+                      Icons.location_pin, Colors.pink, "Location", () {}),
                   SizedBox(width: 40),
-                  iconCreation(Icons.person, Colors.blue, "Contact"),
+                  iconCreation(Icons.person, Colors.blue, "Contact", () {}),
                 ],
               ),
             ],
@@ -502,9 +593,9 @@ class _IndividualPageState extends State<IndividualPage> {
     );
   }
 
-  Widget iconCreation(IconData icon, Color color, String text) {
+  Widget iconCreation(IconData icon, Color color, String text, Function onTap) {
     return InkWell(
-      onTap: () {},
+      onTap: () => onTap(),
       child: Column(
         children: [
           CircleAvatar(

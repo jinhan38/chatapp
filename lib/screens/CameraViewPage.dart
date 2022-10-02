@@ -3,8 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 class CameraViewPage extends StatelessWidget {
-  CameraViewPage({required this.path, Key? key}) : super(key: key);
+  CameraViewPage({
+    required this.path,
+    required this.onImageSend,
+    Key? key,
+  }) : super(key: key);
   final String path;
+  final Function onImageSend;
+  static TextEditingController _controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +51,7 @@ class CameraViewPage extends StatelessWidget {
                 color: Colors.black38,
                 padding: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
                 child: TextFormField(
+                  controller: _controller,
                   maxLines: 6,
                   keyboardType: TextInputType.multiline,
                   minLines: 1,
@@ -60,13 +67,18 @@ class CameraViewPage extends StatelessWidget {
                       hintText: "Add Caption...",
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: Colors.white, fontSize: 17),
-                      suffixIcon: CircleAvatar(
-                        radius: 27,
-                        backgroundColor: Colors.tealAccent[700],
-                        child: Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 27,
+                      suffixIcon: InkWell(
+                        onTap: () {
+                          onImageSend(path, _controller.text);
+                        },
+                        child: CircleAvatar(
+                          radius: 27,
+                          backgroundColor: Colors.tealAccent[700],
+                          child: Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 27,
+                          ),
                         ),
                       )),
                 ),

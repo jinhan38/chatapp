@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen>
       body: TabBarView(
         controller: _controller,
         children: [
-          CameraScreen(),
+          CameraScreen(onImageSend: (String path) {}),
           ChatPage(
               chatModels: widget.chatModels, sourceChat: widget.sourceChat),
           StatusPage(),
